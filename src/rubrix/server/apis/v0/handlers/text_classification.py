@@ -21,11 +21,7 @@ from fastapi.responses import StreamingResponse
 
 from rubrix.server.apis.v0.config.tasks_factory import TaskFactory
 from rubrix.server.apis.v0.handlers import text_classification_dataset_settings
-from rubrix.server.apis.v0.models.commons.model import (
-    BulkResponse,
-    PaginationParams,
-    TaskType,
-)
+from rubrix.server.apis.v0.models.commons.model import BulkResponse, PaginationParams
 from rubrix.server.apis.v0.models.commons.workspace import CommonTaskQueryParams
 from rubrix.server.apis.v0.models.text_classification import (
     CreateLabelingRule,
@@ -35,11 +31,13 @@ from rubrix.server.apis.v0.models.text_classification import (
     TextClassificationBulkData,
     TextClassificationQuery,
     TextClassificationRecord,
+    TextClassificationSearchAggregations,
     TextClassificationSearchRequest,
     TextClassificationSearchResults,
     UpdateLabelingRule,
 )
 from rubrix.server.apis.v0.validators.text_classification import DatasetValidator
+from rubrix.server.commons.models import TaskType
 from rubrix.server.errors import EntityNotFoundError
 from rubrix.server.helpers import takeuntil
 from rubrix.server.security import auth
@@ -48,6 +46,7 @@ from rubrix.server.services.datasets import DatasetsService
 from rubrix.server.services.tasks.text_classification import TextClassificationService
 from rubrix.server.services.tasks.text_classification.model import (
     ServiceLabelingRule,
+    ServiceTextClassificationQuery,
     ServiceTextClassificationRecord,
 )
 
@@ -146,7 +145,7 @@ def search_records(
     )
     result = service.search(
         dataset=dataset,
-        query=query,
+        query=ServiceTextClassificationQuery.parse_obj(query),
         sort_by=search.sort,
         record_from=pagination.from_,
         size=pagination.limit,
@@ -170,8 +169,10 @@ def search_records(
 
     return TextClassificationSearchResults(
         total=result.total,
-        records=[TextClassificationRecord.parse_obj(r) for r in result.records],
-        aggregations=result.aggregations,
+        records=result.records,
+        aggregations=TextClassificationSearchAggregations.parse_obj(result.metrics)
+        if result.metrics
+        else None,
     )
 
 
@@ -232,7 +233,10 @@ async def stream_data(
     )
 
     data_stream = map(
-        TextClassificationRecord.parse_obj, service.read_dataset(dataset, query=query)
+        TextClassificationRecord.parse_obj,
+        service.read_dataset(
+            dataset, query=ServiceTextClassificationQuery.parse_obj(query)
+        ),
     )
     return scan_data_response(
         data_stream=data_stream,

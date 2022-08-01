@@ -20,26 +20,27 @@ from fastapi import APIRouter, Depends, Query, Security
 from fastapi.responses import StreamingResponse
 
 from rubrix.server.apis.v0.config.tasks_factory import TaskFactory
-from rubrix.server.apis.v0.models.commons.model import (
-    BulkResponse,
-    PaginationParams,
-    TaskType,
-)
+from rubrix.server.apis.v0.models.commons.model import BulkResponse, PaginationParams
 from rubrix.server.apis.v0.models.commons.workspace import CommonTaskQueryParams
 from rubrix.server.apis.v0.models.text2text import (
     Text2TextBulkData,
     Text2TextQuery,
     Text2TextRecord,
+    Text2TextSearchAggregations,
     Text2TextSearchRequest,
     Text2TextSearchResults,
 )
+from rubrix.server.commons.models import TaskType
 from rubrix.server.errors import EntityNotFoundError
 from rubrix.server.helpers import takeuntil
 from rubrix.server.security import auth
 from rubrix.server.security.model import User
 from rubrix.server.services.datasets import DatasetsService
 from rubrix.server.services.tasks.text2text import Text2TextService
-from rubrix.server.services.tasks.text2text.models import ServiceText2TextRecord
+from rubrix.server.services.tasks.text2text.models import (
+    ServiceText2TextQuery,
+    ServiceText2TextRecord,
+)
 
 TASK_TYPE = TaskType.text2text
 BASE_ENDPOINT = "/{name}/" + TASK_TYPE
@@ -126,7 +127,7 @@ def search_records(
     )
     result = service.search(
         dataset=dataset,
-        query=query,
+        query=ServiceText2TextQuery.parse_obj(query),
         sort_by=search.sort,
         record_from=pagination.from_,
         size=pagination.limit,
@@ -148,7 +149,9 @@ def search_records(
     return Text2TextSearchResults(
         total=result.total,
         records=[Text2TextRecord.parse_obj(r) for r in result.records],
-        aggregations=result.aggregations,
+        aggregations=Text2TextSearchAggregations.parse_obj(result.metrics)
+        if result.metrics
+        else None,
     )
 
 
@@ -206,7 +209,8 @@ async def stream_data(
         as_dataset_class=TaskFactory.get_task_dataset(TASK_TYPE),
     )
     data_stream = map(
-        Text2TextRecord.parse_obj, service.read_dataset(dataset, query=query)
+        Text2TextRecord.parse_obj,
+        service.read_dataset(dataset, query=ServiceText2TextQuery.parse_obj(query)),
     )
     return scan_data_response(
         data_stream=data_stream,

@@ -17,19 +17,17 @@ from typing import Iterable, List, Optional, Type
 
 from fastapi import Depends
 
-from rubrix.server.apis.v0.models.metrics.base import BaseTaskMetrics
-from rubrix.server.backend.search.model import SortableField
-from rubrix.server.services.metrics import BaseMetric
-from rubrix.server.services.search.model import SortConfig
+from rubrix.server.daos.backend.search.model import SortableField
+from rubrix.server.services.metrics import ServiceBaseMetric
+from rubrix.server.services.metrics.models import ServiceBaseTaskMetrics
+from rubrix.server.services.search.model import ServiceSearchResults, ServiceSortConfig
 from rubrix.server.services.search.service import SearchRecordsService
 from rubrix.server.services.storage.service import RecordsStorageService
 from rubrix.server.services.tasks.commons import BulkResponse
 from rubrix.server.services.tasks.token_classification.model import (
+    ServiceTokenClassificationDataset,
+    ServiceTokenClassificationQuery,
     ServiceTokenClassificationRecord,
-    TokenClassificationAggregations,
-    TokenClassificationDatasetDB,
-    TokenClassificationQuery,
-    TokenClassificationSearchResults,
 )
 
 
@@ -61,9 +59,9 @@ class TokenClassificationService:
 
     def add_records(
         self,
-        dataset: TokenClassificationDatasetDB,
+        dataset: ServiceTokenClassificationDataset,
         records: List[ServiceTokenClassificationRecord],
-        metrics: Type[BaseTaskMetrics],
+        metrics: Type[ServiceBaseTaskMetrics],
     ):
         failed = self.__storage__.store_records(
             dataset=dataset,
@@ -75,14 +73,14 @@ class TokenClassificationService:
 
     def search(
         self,
-        dataset: TokenClassificationDatasetDB,
-        query: TokenClassificationQuery,
+        dataset: ServiceTokenClassificationDataset,
+        query: ServiceTokenClassificationQuery,
         sort_by: List[SortableField],
         record_from: int = 0,
         size: int = 100,
         exclude_metrics: bool = True,
-        metrics: Optional[List[BaseMetric]] = None,
-    ) -> TokenClassificationSearchResults:
+        metrics: Optional[List[ServiceBaseMetric]] = None,
+    ) -> ServiceSearchResults:
 
         results = self.__search__.search(
             dataset,
@@ -92,7 +90,7 @@ class TokenClassificationService:
             record_from=record_from,
             exclude_metrics=exclude_metrics,
             metrics=metrics,
-            sort_config=SortConfig(sort_by=sort_by),
+            sort_config=ServiceSortConfig(sort_by=sort_by),
         )
 
         if results.metrics:
@@ -107,18 +105,12 @@ class TokenClassificationService:
                 "predicted_mentions_distribution"
             ]
 
-        return TokenClassificationSearchResults(
-            total=results.total,
-            records=results.records,
-            aggregations=TokenClassificationAggregations.parse_obj(results.metrics)
-            if results.metrics
-            else None,
-        )
+        return results
 
     def read_dataset(
         self,
-        dataset: TokenClassificationDatasetDB,
-        query: TokenClassificationQuery,
+        dataset: ServiceTokenClassificationDataset,
+        query: ServiceTokenClassificationQuery,
     ) -> Iterable[ServiceTokenClassificationRecord]:
         """
         Scan a dataset records
