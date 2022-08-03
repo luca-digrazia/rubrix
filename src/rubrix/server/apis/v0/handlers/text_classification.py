@@ -20,17 +20,17 @@ from fastapi import APIRouter, Depends, Query, Security
 from fastapi.responses import StreamingResponse
 
 from rubrix.server.apis.v0.handlers import text_classification_dataset_settings
-from rubrix.server.apis.v0.models.commons.model import BulkResponse, PaginationParams
-from rubrix.server.apis.v0.models.commons.workspace import CommonTaskQueryParams
-from rubrix.server.apis.v0.models.metrics.token_classification import (
-    TokenClassificationMetrics,
+from rubrix.server.apis.v0.models.commons.model import BulkResponse
+from rubrix.server.apis.v0.models.commons.params import (
+    CommonTaskHandlerDependencies,
+    RequestPagination,
 )
 from rubrix.server.apis.v0.models.text_classification import (
     CreateLabelingRule,
     DatasetLabelingRulesMetricsSummary,
     LabelingRule,
     LabelingRuleMetricsSummary,
-    TextClassificationBulkData,
+    TextClassificationBulkRequest,
     TextClassificationQuery,
     TextClassificationRecord,
     TextClassificationSearchAggregations,
@@ -55,6 +55,9 @@ from rubrix.server.services.tasks.text_classification.model import (
     ServiceLabelingRule,
     ServiceTextClassificationQuery,
     ServiceTextClassificationRecord,
+)
+from rubrix.server.services.tasks.token_classification.metrics import (
+    TokenClassificationMetrics,
 )
 from rubrix.server.services.tasks.token_classification.model import (
     ServiceTokenClassificationRecord,
@@ -84,8 +87,8 @@ router = APIRouter(tags=[TASK_TYPE], prefix="/datasets")
 )
 async def bulk_records(
     name: str,
-    bulk: TextClassificationBulkData,
-    common_params: CommonTaskQueryParams = Depends(),
+    bulk: TextClassificationBulkRequest,
+    common_params: CommonTaskHandlerDependencies = Depends(),
     service: TextClassificationService = Depends(
         TextClassificationService.get_instance
     ),
@@ -142,11 +145,11 @@ async def bulk_records(
 def search_records(
     name: str,
     search: TextClassificationSearchRequest = None,
-    common_params: CommonTaskQueryParams = Depends(),
+    common_params: CommonTaskHandlerDependencies = Depends(),
     include_metrics: bool = Query(
         False, description="If enabled, return related record metrics"
     ),
-    pagination: PaginationParams = Depends(),
+    pagination: RequestPagination = Depends(),
     service: TextClassificationService = Depends(
         TextClassificationService.get_instance
     ),
@@ -219,7 +222,7 @@ def scan_data_response(
 async def stream_data(
     name: str,
     query: Optional[TextClassificationQuery] = None,
-    common_params: CommonTaskQueryParams = Depends(),
+    common_params: CommonTaskHandlerDependencies = Depends(),
     limit: Optional[int] = Query(None, description="Limit loaded records", gt=0),
     service: TextClassificationService = Depends(
         TextClassificationService.get_instance
@@ -258,7 +261,7 @@ async def stream_data(
 )
 async def list_labeling_rules(
     name: str,
-    common_params: CommonTaskQueryParams = Depends(),
+    common_params: CommonTaskHandlerDependencies = Depends(),
     datasets: DatasetsService = Depends(DatasetsService.get_instance),
     service: TextClassificationService = Depends(
         TextClassificationService.get_instance
@@ -289,7 +292,7 @@ async def list_labeling_rules(
 async def create_rule(
     name: str,
     rule: CreateLabelingRule,
-    common_params: CommonTaskQueryParams = Depends(),
+    common_params: CommonTaskHandlerDependencies = Depends(),
     service: TextClassificationService = Depends(
         TextClassificationService.get_instance
     ),
@@ -329,7 +332,7 @@ async def compute_rule_metrics(
     labels: Optional[List[str]] = Query(
         None, description="Label related to query rule", alias="label"
     ),
-    common_params: CommonTaskQueryParams = Depends(),
+    common_params: CommonTaskHandlerDependencies = Depends(),
     service: TextClassificationService = Depends(
         TextClassificationService.get_instance
     ),
@@ -357,7 +360,7 @@ async def compute_rule_metrics(
 )
 async def compute_dataset_rules_metrics(
     name: str,
-    common_params: CommonTaskQueryParams = Depends(),
+    common_params: CommonTaskHandlerDependencies = Depends(),
     service: TextClassificationService = Depends(
         TextClassificationService.get_instance
     ),
@@ -383,7 +386,7 @@ async def compute_dataset_rules_metrics(
 async def delete_labeling_rule(
     name: str,
     query: str,
-    common_params: CommonTaskQueryParams = Depends(),
+    common_params: CommonTaskHandlerDependencies = Depends(),
     service: TextClassificationService = Depends(
         TextClassificationService.get_instance
     ),
@@ -412,7 +415,7 @@ async def delete_labeling_rule(
 async def get_rule(
     name: str,
     query: str,
-    common_params: CommonTaskQueryParams = Depends(),
+    common_params: CommonTaskHandlerDependencies = Depends(),
     service: TextClassificationService = Depends(
         TextClassificationService.get_instance
     ),
@@ -445,7 +448,7 @@ async def update_rule(
     name: str,
     query: str,
     update: UpdateLabelingRule,
-    common_params: CommonTaskQueryParams = Depends(),
+    common_params: CommonTaskHandlerDependencies = Depends(),
     service: TextClassificationService = Depends(
         TextClassificationService.get_instance
     ),

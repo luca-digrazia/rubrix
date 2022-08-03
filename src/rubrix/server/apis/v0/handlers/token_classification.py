@@ -20,10 +20,10 @@ from fastapi import APIRouter, Depends, Query, Security
 from fastapi.responses import StreamingResponse
 
 from rubrix.server.apis.v0.handlers import token_classification_dataset_settings
-from rubrix.server.apis.v0.models.commons.model import BulkResponse, PaginationParams
-from rubrix.server.apis.v0.models.commons.workspace import CommonTaskQueryParams
-from rubrix.server.apis.v0.models.metrics.text_classification import (
-    TextClassificationMetrics,
+from rubrix.server.apis.v0.models.commons.model import BulkResponse
+from rubrix.server.apis.v0.models.commons.params import (
+    CommonTaskHandlerDependencies,
+    RequestPagination,
 )
 from rubrix.server.apis.v0.models.text_classification import (
     TextClassificationDataset,
@@ -31,7 +31,7 @@ from rubrix.server.apis.v0.models.text_classification import (
 )
 from rubrix.server.apis.v0.models.token_classification import (
     TokenClassificationAggregations,
-    TokenClassificationBulkData,
+    TokenClassificationBulkRequest,
     TokenClassificationQuery,
     TokenClassificationRecord,
     TokenClassificationSearchRequest,
@@ -45,6 +45,9 @@ from rubrix.server.helpers import takeuntil
 from rubrix.server.security import auth
 from rubrix.server.security.model import User
 from rubrix.server.services.datasets import DatasetsService
+from rubrix.server.services.tasks.text_classification.metrics import (
+    TextClassificationMetrics,
+)
 from rubrix.server.services.tasks.text_classification.model import (
     ServiceTextClassificationRecord,
 )
@@ -77,8 +80,8 @@ router = APIRouter(tags=[TASK_TYPE], prefix="/datasets")
 )
 async def bulk_records(
     name: str,
-    bulk: TokenClassificationBulkData,
-    common_params: CommonTaskQueryParams = Depends(),
+    bulk: TokenClassificationBulkRequest,
+    common_params: CommonTaskHandlerDependencies = Depends(),
     service: TokenClassificationService = Depends(
         TokenClassificationService.get_instance
     ),
@@ -137,11 +140,11 @@ async def bulk_records(
 def search_records(
     name: str,
     search: TokenClassificationSearchRequest = None,
-    common_params: CommonTaskQueryParams = Depends(),
+    common_params: CommonTaskHandlerDependencies = Depends(),
     include_metrics: bool = Query(
         False, description="If enabled, return related record metrics"
     ),
-    pagination: PaginationParams = Depends(),
+    pagination: RequestPagination = Depends(),
     service: TokenClassificationService = Depends(
         TokenClassificationService.get_instance
     ),
@@ -215,7 +218,7 @@ def scan_data_response(
 async def stream_data(
     name: str,
     query: Optional[TokenClassificationQuery] = None,
-    common_params: CommonTaskQueryParams = Depends(),
+    common_params: CommonTaskHandlerDependencies = Depends(),
     limit: Optional[int] = Query(None, description="Limit loaded records", gt=0),
     service: TokenClassificationService = Depends(
         TokenClassificationService.get_instance
